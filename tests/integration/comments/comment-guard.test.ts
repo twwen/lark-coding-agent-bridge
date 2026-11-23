@@ -52,6 +52,38 @@ describe('comment guard', () => {
     expect(h.channel.replies).toEqual(['answer']);
   });
 
+  it('drops commenters outside the allowlist before remote fetch when commentAccess is allowlist', async () => {
+    const h = await createHarness({
+      comments: {},
+      allowedUsers: [],
+      commentAccess: 'allowlist',
+    });
+
+    await handleCommentMention(h.deps(event({ operator: { openId: 'ou-outsider' } })));
+
+    expect(h.channel.calls).toEqual([]);
+    expect(h.agent.runOptions).toEqual([]);
+    expect(h.channel.replies).toEqual([]);
+  });
+
+  it('runs comments from the owner and allowed users when commentAccess is allowlist', async () => {
+    const listed = await createHarness({
+      comments: {},
+      allowedUsers: ['ou-listed'],
+      commentAccess: 'allowlist',
+    });
+    await handleCommentMention(listed.deps(event({ operator: { openId: 'ou-listed' } })));
+    expect(listed.channel.replies).toEqual(['answer']);
+
+    const owner = await createHarness({
+      comments: {},
+      allowedUsers: [],
+      commentAccess: 'allowlist',
+    });
+    await handleCommentMention(owner.deps(event({ operator: { openId: 'ou-owner' } })));
+    expect(owner.channel.replies).toEqual(['answer']);
+  });
+
   it('skips unmentioned, unsupported, and self-reply comments before remote fetch', async () => {
     const h = await createHarness({
       botOpenId: 'ou-bot',
@@ -94,6 +126,7 @@ describe('comment guard', () => {
 async function createHarness(options: {
   comments: unknown;
   allowedUsers: string[];
+  commentAccess?: ProfileConfig['access']['commentAccess'];
   botOpenId?: string;
   wikiNode?: { objToken: string; objType: string; spaceId?: string };
 }): Promise<{
@@ -169,7 +202,12 @@ async function createHarness(options: {
     await Promise.all([sessions.flush(), workspaces.flush()]);
     await tmp.cleanup();
   });
-  const profileConfig = profile(options.allowedUsers, tmp.workspace, options.comments);
+  const profileConfig = profile(
+    options.allowedUsers,
+    tmp.workspace,
+    options.comments,
+    options.commentAccess,
+  );
   const activeRuns = new ActiveRuns();
   const executor = new RunExecutor({
     agent,
@@ -210,11 +248,12 @@ function profile(
   allowedUsers: string[],
   defaultWorkspace: string,
   comments: unknown,
+  commentAccess?: ProfileConfig['access']['commentAccess'],
 ): ProfileConfig {
   const config = createDefaultProfileConfig({
     agentKind: 'claude',
     accounts: { app: { id: 'cli_test', secret: '${APP_SECRET}', tenant: 'feishu' } },
-    access: { allowedUsers },
+    access: { allowedUsers, ...(commentAccess ? { commentAccess } : {}) },
     sandbox: { defaultMode: 'read-only', maxMode: 'workspace-write' },
   });
   config.comments = comments as ProfileConfig['comments'];

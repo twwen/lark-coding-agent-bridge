@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   accessPolicyDigest,
   canRunAdminCommand,
+  canUseComment,
   canUseDm,
   canUseGroup,
   isCreator,
@@ -24,6 +25,37 @@ describe('access policy', () => {
     expect(canUseDm(profile, ownerControls, 'ou_owner').ok).toBe(true);
     expect(canUseGroup(profile, ownerControls, 'chat_any', 'ou_owner').ok).toBe(true);
     expect(canRunAdminCommand(profile, ownerControls, 'ou_owner').ok).toBe(true);
+  });
+
+  it('leaves comment mentions open to any commenter by default', () => {
+    const profile = profileWithAccess();
+
+    expect(profile.access.commentAccess).toBeUndefined();
+    expect(canUseComment(profile, ownerControls, 'ou_stranger')).toEqual({
+      ok: true,
+      reason: 'comment-mention',
+    });
+  });
+
+  it('limits comment mentions to owner, admins and allowed users under commentAccess allowlist', () => {
+    const profile = profileWithAccess({
+      commentAccess: 'allowlist',
+      allowedUsers: ['ou_user'],
+      admins: ['ou_admin'],
+    });
+
+    expect(canUseComment(profile, ownerControls, 'ou_owner')).toEqual({ ok: true, reason: 'owner' });
+    expect(canUseComment(profile, ownerControls, 'ou_admin')).toEqual({ ok: true, reason: 'allowed-admin' });
+    expect(canUseComment(profile, ownerControls, 'ou_user')).toEqual({ ok: true, reason: 'allowed-user' });
+    expect(canUseComment(profile, ownerControls, 'ou_stranger')).toEqual({ ok: false, reason: 'denied-user' });
+  });
+
+  it('keeps the comment allowlist closed in team mode and drops unknown commentAccess values', () => {
+    const team = profileWithAccess({ commentAccess: 'allowlist' }, 'team');
+    expect(canUseComment(team, ownerControls, 'ou_stranger').ok).toBe(false);
+
+    const bogus = profileWithAccess({ commentAccess: 'everyone' as never });
+    expect(bogus.access.commentAccess).toBeUndefined();
   });
 
   it('uses a cached owner even when the last owner refresh failed', () => {

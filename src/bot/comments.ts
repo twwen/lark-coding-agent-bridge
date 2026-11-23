@@ -8,6 +8,7 @@ import { getAgentStopGraceMs } from '../config/schema';
 import type { Controls } from '../commands';
 import { resolveAppPaths } from '../config/app-paths';
 import { log } from '../core/logger';
+import { canUseComment } from '../policy/access';
 import { evaluateRunPolicy } from '../policy/run-policy';
 import { resolveWorkingDirectory } from '../policy/workspace';
 import { RunRejected } from '../runtime/errors';
@@ -112,6 +113,15 @@ export async function handleCommentMention(deps: CommentDeps): Promise<void> {
   if (isBridgeSelfReply(channel, evt)) {
     log.info('comment', 'skip', {
       reason: 'bridge-self-reply',
+      commentScopeId: eventCommentScopeId,
+    });
+    return;
+  }
+  // Checked before any remote fetch, and dropped silently like IM strangers.
+  const commentAccess = canUseComment(controls.profileConfig, controls, evt.operator.openId);
+  if (!commentAccess.ok) {
+    log.info('comment', 'skip', {
+      reason: 'not-allowed-user',
       commentScopeId: eventCommentScopeId,
     });
     return;

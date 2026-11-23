@@ -29,7 +29,15 @@ export interface ProfileAccess {
    * priority over `requireMentionInGroup` for the chats it lists.
    */
   chatRequireMention?: Record<string, boolean>;
+  /**
+   * Who may start a run by @-mentioning the bot in a cloud-doc comment.
+   * `document` (default, omitted from config): anyone who can comment on the
+   * doc. `allowlist`: only the owner, admins and `allowedUsers`.
+   */
+  commentAccess?: CommentAccessMode;
 }
+
+export type CommentAccessMode = 'document' | 'allowlist';
 
 export interface SandboxConfig {
   default?: SandboxMode;
@@ -350,6 +358,8 @@ function normalizeAccess(
     requireMentionInGroup: access?.requireMentionInGroup ?? legacyRequireMentionInGroup ?? true,
     // Omit when empty so configs without per-chat overrides stay clean.
     ...(Object.keys(chatRequireMention).length > 0 ? { chatRequireMention } : {}),
+    // Only the non-default value is stored; anything else means `document`.
+    ...(access?.commentAccess === 'allowlist' ? { commentAccess: 'allowlist' as const } : {}),
   };
 }
 

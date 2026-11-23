@@ -58,6 +58,25 @@ export function canUseGroup(
 }
 
 /**
+ * Whether `senderId` may start a run from a cloud-doc comment @-mention.
+ * Open to anyone who can comment unless the profile opts into
+ * `access.commentAccess: 'allowlist'`, which admits only the owner, admins and
+ * allowedUsers. Team mode does not widen an explicit allowlist: comments reach
+ * the bot from any doc, not only from chats it was added to.
+ */
+export function canUseComment(
+  profile: ProfileConfig,
+  controls: RuntimeControls,
+  senderId: string,
+): AccessDecision {
+  if (profile.access.commentAccess !== 'allowlist') return allow('comment-mention');
+  if (isCreator(controls, senderId)) return allow('owner');
+  if (profile.access.admins.includes(senderId)) return allow('allowed-admin');
+  if (profile.access.allowedUsers.includes(senderId)) return allow('allowed-user');
+  return deny('denied-user');
+}
+
+/**
  * Whether a group message must @-mention the bot to be handled. A per-chat
  * override (profile.access.chatRequireMention[chatId]) takes priority over the
  * global requireMentionInGroup (from cfg). p2p chats never call this.

@@ -303,6 +303,18 @@ Each line carries `chatId` (group / DM id) and `senderId` (user `open_id`). Afte
 
 Cloud-doc comments do not need a separate workspace binding or document allowlist. In supported document comments, mention the bot and the bridge replies in the same thread. Comment runs reuse the document session key and fall back to the user home directory when no document cwd was previously recorded.
 
+By default anyone who can comment in the document can trigger a run. To restrict comment runs to the app owner, admins and allowed users, set `commentAccess` to `allowlist` in the profile's `access` field (profile-field snippet), then restart the bridge:
+
+```json
+{
+  "access": {
+    "commentAccess": "allowlist"
+  }
+}
+```
+
+Other commenters are then ignored silently, the same way chat strangers are. This also applies in team mode.
+
 ## FAQ
 
 **The bot stays silent or the local CLI never replies.** Usually the local `claude` or `codex` CLI is not logged in, or the current session points to a working directory that no longer exists. Send `/status` to inspect; `/new` often fixes it by starting a fresh session.

@@ -303,6 +303,18 @@ grep '"event":"enter"' ~/.lark-channel/profiles/<profile>/logs/bridge-$(date +%Y
 
 云文档评论不再需要单独绑定工作目录或维护文档白名单。支持的文档评论里 @bot 后，bridge 会在同一个评论线程里回复。评论运行复用文档级 session key；没有记录过文档 cwd 时回退到用户 home 目录。
 
+默认情况下，能在文档里评论的人都可以触发运行。如果只想让应用 owner、管理员和白名单用户通过评论触发，在对应 profile 的 `access` 字段里把 `commentAccess` 设为 `allowlist`（下面只是字段片段），然后重启 bridge：
+
+```json
+{
+  "access": {
+    "commentAccess": "allowlist"
+  }
+}
+```
+
+开启后，其他人的评论会被静默忽略，和聊天里的陌生人一样。团队模式下这个限制同样生效。
+
 ## 常见问题
 
 **bot 没反应 / agent 不回复**：通常是本机 `claude` 或 `codex` CLI 没登录，或者当前会话指向了不存在的工作目录。发 `/status` 看当前状态；`/new` 重开会话往往就好。
